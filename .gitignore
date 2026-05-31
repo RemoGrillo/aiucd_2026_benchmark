@@ -1,0 +1,8 @@
+# Track only the presentation — ignore source materials
+AIUCD 26 Scaletta Benchmark CH(1).md
+scaletta.md
+aiucd logo_grande.png
+
+# OS / editor cruft
+.DS_Store
+*.swp
