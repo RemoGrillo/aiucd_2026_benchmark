@@ -2,6 +2,8 @@
 AIUCD 26 Scaletta Benchmark CH(1).md
 scaletta.md
 aiucd logo_grande.png
+*.pdf
+.build_pptx/
 
 # OS / editor cruft
 .DS_Store
