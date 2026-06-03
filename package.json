@@ -1,0 +1,10 @@
+{
+  "name": "aiucd-2026-benchmark",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AIUCD 2026 presentation — single-file HTML deck + PDF exporter",
+  "type": "module",
+  "scripts": {
+    "pdf": "node generate_pdf.mjs"
+  }
+}

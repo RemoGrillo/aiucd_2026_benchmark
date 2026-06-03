@@ -239,6 +239,26 @@ body.dark-chrome #progress{background:var(--sienna-soft);}
 @media (prefers-reduced-motion: reduce){
   .slide,.slide.active .reveal{transition:opacity .2s;animation:none!important;transform:none!important;}
 }
+
+/* ============================== PRINT / PDF EXPORT ============================== */
+/* Used by generate_pdf.mjs (headless Chrome). Lays every slide out as its own
+   1280x720 landscape page so the live deck and the PDF never drift apart. */
+@media print{
+  @page{ size:1280px 720px; margin:0; }
+  *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+  html,body{ background:#fff !important; height:auto !important; overflow:visible !important;
+    display:block !important; }
+  #viewport{ position:static !important; inset:auto !important; display:block !important; }
+  #stage{ position:static !important; transform:none !important; width:1280px !important;
+    height:auto !important; overflow:visible !important; box-shadow:none !important; }
+  .slide{ position:relative !important; inset:auto !important; width:1280px !important;
+    height:720px !important; overflow:hidden !important; opacity:1 !important;
+    visibility:visible !important; transform:none !important; animation:none !important;
+    page-break-before:always; break-before:page; page-break-inside:avoid; break-inside:avoid; }
+  .slide:first-of-type{ page-break-before:avoid; break-before:avoid; }
+  .slide .reveal{ animation:none !important; opacity:1 !important; transform:none !important; }
+  #progress,#dots,#pageno,#hint{ display:none !important; }
+}
 </style>
 </head>
 <body>
@@ -253,7 +273,7 @@ body.dark-chrome #progress{background:var(--sienna-soft);}
         <h1 class="reveal r2">Assessing LLM Capabilities in <span class="hl">Cultural Heritage</span></h1>
         <div class="title-sub reveal r3">Recent Trends and Gaps in Benchmarks</div>
         <div class="authors reveal r4">
-          <div class="a-name"><b>Remo Grillo</b><sup>1,2</sup> · Gianmarco Spinaci<sup>1,2</sup> · Lukas Klic<sup>2</sup> · Giovanni Colavizza<sup>1,3</sup></div>
+          <div class="a-name"><b>Remo Grillo</b><sup>1,2</sup> · <b>Gianmarco Spinaci</b><sup>1,2</sup> · Lukas Klic<sup>2</sup> · Giovanni Colavizza<sup>1,3</sup></div>
           <div class="affil">
             <sup>1</sup> Dip. di Filologia Classica e Italianistica, Università di Bologna &nbsp;·&nbsp;
             <sup>2</sup> I Tatti — The Harvard University Center for Italian Renaissance Studies, Firenze &nbsp;·&nbsp;
@@ -557,7 +577,7 @@ body.dark-chrome #progress{background:var(--sienna-soft);}
     <h2 class="reveal r2">Thank you</h2>
     <p class="ty-sub reveal r3">Assessing LLM Capabilities in Cultural Heritage:<br>Recent Trends and Gaps in Benchmarks</p>
     <div class="ty-authors reveal r4">
-      <b>Remo Grillo</b> · Gianmarco Spinaci · Lukas Klic · Giovanni Colavizza<br>
+      <b>Remo Grillo</b> · <b>Gianmarco Spinaci</b> · Lukas Klic · Giovanni Colavizza<br>
       Università di Bologna · I Tatti – Harvard · University of Copenhagen<br>
       rgrillo@itatti.harvard.edu
     </div>
@@ -583,6 +603,11 @@ body.dark-chrome #progress{background:var(--sienna-soft);}
   const hint = document.getElementById('hint');
   let idx = 0;
   let charted = {};
+  // Print/PDF mode: opened with ?print, charts render in their final (non-animated)
+  // state and generate_pdf.mjs paginates each slide via the @media print CSS.
+  const PRINT = new URLSearchParams(location.search).has('print');
+  let STATIC = PRINT;
+  function raf(fn){ if(STATIC){ fn(); } else { requestAnimationFrame(fn); } }
 
   // build dots
   slides.forEach((_,i)=>{
@@ -680,10 +705,11 @@ body.dark-chrome #progress{background:var(--sienna-soft);}
     xt.textContent='REASONING COMPLEXITY →';svg.appendChild(xt);
     const yt=el('text',{x:0,y:0,'text-anchor':'middle','font-size':'11',fill:'#8A7F71','letter-spacing':'.08em',transform:`translate(16,${(y0+y1)/2}) rotate(-90)`});
     yt.textContent='ACCURACY';svg.appendChild(yt);
-    // animate line draw
-    const len=path.getTotalLength?420:420;
-    path.style.strokeDasharray=600;path.style.strokeDashoffset=600;
-    requestAnimationFrame(()=>{path.style.transition='stroke-dashoffset 1.1s ease';path.style.strokeDashoffset=0;});
+    // animate line draw (skipped in print/static mode → solid line)
+    if(!STATIC){
+      path.style.strokeDasharray=600;path.style.strokeDashoffset=600;
+      requestAnimationFrame(()=>{path.style.transition='stroke-dashoffset 1.1s ease';path.style.strokeDashoffset=0;});
+    }
     return svg;
   }
 
@@ -713,9 +739,9 @@ body.dark-chrome #progress{background:var(--sienna-soft);}
       const bh=(d.v/100)*(y0-y1);
       const rect=el('rect',{x:bx,y:y0,width:bw,height:0,fill:d.c,rx:2});
       svg.appendChild(rect);
-      requestAnimationFrame(()=>{rect.style.transition='all 0.9s cubic-bezier(.2,.7,.2,1)';rect.setAttribute('y',y0-bh);rect.setAttribute('height',bh);});
+      raf(()=>{ if(!STATIC) rect.style.transition='all 0.9s cubic-bezier(.2,.7,.2,1)'; rect.setAttribute('y',y0-bh);rect.setAttribute('height',bh); });
       const vt=el('text',{x:bx+bw/2,y:y0-bh-8,'text-anchor':'middle','font-size':'13',fill:'#211C18','font-weight':'500'});vt.textContent=d.v+'%';
-      vt.style.opacity=0;requestAnimationFrame(()=>{vt.style.transition='opacity .6s .5s';vt.style.opacity=1;});svg.appendChild(vt);
+      vt.style.opacity=0;raf(()=>{ if(!STATIC) vt.style.transition='opacity .6s .5s'; vt.style.opacity=1; });svg.appendChild(vt);
       const lt=el('text',{x:bx+bw/2,y:y0+22,'text-anchor':'middle','font-size':'12','fill':'#211C18'});lt.textContent=d.label;svg.appendChild(lt);
       const st=el('text',{x:bx+bw/2,y:y0+37,'text-anchor':'middle','font-size':'10',fill:'#8A7F71'});st.textContent=d.sub;svg.appendChild(st);
     });
@@ -748,9 +774,9 @@ body.dark-chrome #progress{background:var(--sienna-soft);}
       const cx=x0+it.x*(x1-x0), cy=y0-it.y*(y0-y1);
       const c=el('circle',{cx:cx,cy:cy,r:0,fill:it.c,'fill-opacity':.85});
       svg.appendChild(c);
-      requestAnimationFrame(()=>{c.style.transition='r .7s cubic-bezier(.2,.7,.2,1) '+(0.15*i)+'s';c.setAttribute('r',it.r);});
+      raf(()=>{ if(!STATIC) c.style.transition='r .7s cubic-bezier(.2,.7,.2,1) '+(0.15*i)+'s'; c.setAttribute('r',it.r); });
       const t=el('text',{x:cx,y:cy+4,'text-anchor':'middle','font-size':'11',fill:'#fff','font-weight':'500'});t.textContent=it.n;
-      t.style.opacity=0;requestAnimationFrame(()=>{t.style.transition='opacity .5s '+(0.3+0.15*i)+'s';t.style.opacity=1;});svg.appendChild(t);
+      t.style.opacity=0;raf(()=>{ if(!STATIC) t.style.transition='opacity .5s '+(0.3+0.15*i)+'s'; t.style.opacity=1; });svg.appendChild(t);
       if(it.note){const nt=el('text',{x:cx,y:cy+it.r+14,'text-anchor':'middle','font-size':'9.5',fill:'#8A7F71'});nt.textContent=it.note;svg.appendChild(nt);}
     });
     // quadrant captions
@@ -764,11 +790,13 @@ body.dark-chrome #progress{background:var(--sienna-soft);}
     if(slide.id==='s-vqa2' && !charted.bars){const c=document.getElementById('chart-bars');c.appendChild(barsChart());charted.bars=1;}
     if(slide.id==='s-bifurc' && !charted.bif){const c=document.getElementById('chart-bifurc');c.appendChild(bifurcChart());charted.bif=1;}
   }
+  function renderAllCharts(){ slides.forEach(drawCharts); }
 
   // init
   const start = Math.max(1, parseInt((location.hash||'').replace('#',''))||1);
   fit();
   show(start-1);
+  if(PRINT){ renderAllCharts(); }   // ensure every chart exists in the PDF
 })();
 </script>
 </body>
